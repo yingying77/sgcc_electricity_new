@@ -31,5 +31,5 @@ RUN cd /tmp \
     && rm -rf /var/log/*
 
 ENV LANG C.UTF-8
-
+EXPOSE 5000
 CMD ["python"]
