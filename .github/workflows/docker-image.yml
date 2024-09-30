@@ -2,7 +2,8 @@ name: sgcc_electricity
 
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - master
 
 env:
   REGISTRY: ghcr.io
