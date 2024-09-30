@@ -1,44 +1,39 @@
-name: Docker Image CI
+name: sgcc_electricity
 
-on:  
-  workflow_dispatch:
-    inputs:
-      username:
-        description: 'version of this branch'
-        default: 'v1.5.0'
-        required: true
-        type: string
-    paths:
-      - 'scripts/**'
-      - 'Dockerfile-for-github-action'
-      - 'requirements.txt'
-      - 'example.env'
-      - '.github/workflows/docker-image.yml'
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.actor }}/sgcc_electricity
 
 jobs:
-
-  build:
-
+  build-and-push-image:
+    name: Build and push image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-
-    - name: Log into docker hub registry
-      run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin 
-
-
-    - name: Build and push Docker image
-      run: |
-        PLATFORMS=linux/arm64,linux/amd64
-        DOCKER_IMAGE=arcw/sgcc_electricity
-        docker buildx build --build-arg VERSION=${{ inputs.username }} --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{ inputs.username }} --file Dockerfile-for-github-action --push .
-
-    - name: Log into Aliyun hub registry and push Docker image
-      run: |
-        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin registry.cn-hangzhou.aliyuncs.com 
-        PLATFORMS=linux/arm64,linux/amd64
-        DOCKER_IMAGE=registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity
-        docker buildx build --build-arg VERSION=${{ inputs.username }} --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{ inputs.username }} --file Dockerfile-for-github-action --push .
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: ${{ steps.meta.outputs.labels }}
